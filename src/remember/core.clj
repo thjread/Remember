@@ -6,26 +6,6 @@
   (:require [clojure.edn :as edn])
   (:require [clojure.tools.cli :as cli]))
 
-;; USAGE:
-;;   remember [-f save-file]
-;;       --all-correct - repeat questions until all correct in a row
-;;   remember "question" "answer" [-f save-file]
-;;       --no-type-in
-;;   remember delete "question" [-f save-file]
-;;
-;;   In test:
-;;       > answer
-;;       > giveup
-;;       > undo
-;;       > quit
-;;   Questions are repeated until a correct answer is obtained *)
-;;
-;; Question asking:
-;;   - tasks have ask timer of 1, karma of 0
-;;   - ask timer is set to 2^karma each time correctly answered
-;;   - karma increases by 1 each time correct
-;;   - karma decreases by 1 each time incorrect, min -3 *)
-
 (defrecord Memory
     [question answer type-in lastdate timer karma])
 
@@ -90,9 +70,6 @@
 
 (defn save-memories [file]
   (spit file (prn-str (map memory-to-printable @memories))))
-
-;; TODO: defn ask-question, returns 'correct, 'incorrect, 'undo or 'quit
-;;       defn ask-next, takes allcorrect, returns state for recursion, 'undo or 'quit
 
 (defn test-state [questions]
   {:ask (->> questions
@@ -183,6 +160,13 @@
             quit nil
             (recur result test-state)))))))
 
+(defn list-memories []
+  (map println
+       ["Memories:"
+        ""
+        (map (fn [memory] (str (:question memory) " -> " (:answer memory)))
+             @memories)]))
+
 (def cli-options [["-h" "--help" "Print this help"
                    :default false]
                   ["-c" "--all-correct" "Repeat questions until all answered correctly in a row"
@@ -203,6 +187,7 @@
         "Actions:"
         "  add QUESTION ANSWER     Add a new memory"
         "  delete QUESTION         Delete a memory"
+        "  list                    List memories"
         ""
         "If no action is given the program will test difficult memories."]
        (clojure.string/join \newline)))
@@ -214,7 +199,8 @@
       (do (load-memories (:file options))
           (case (first arguments)
             nil      (do-test (:all-correct options) (:all options))
-            "delete" (delete-memory (second arguments))
+            "delete" (delete-memory (second arguments)) ;; TODO: say when not found
+            "list"   (list-memories)
             (add-memory (make-memory (first arguments) (second arguments)
                                      (not (:show options)))))
           (save-memories (:file options))))))
