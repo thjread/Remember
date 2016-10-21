@@ -40,7 +40,7 @@
   (swap! memories (partial remove #(= question (:question (deref %))))))
 
 (defn karma-time [karma]
-  (math/expt 2 karma))
+  (math/expt 2 (dec karma)))
 
 (defn correct-answer [memory]
   (letfn [(correct [mem]
@@ -132,7 +132,7 @@
       (ask-next true (merge test-state {:ask correct
                                         :correct []
                                         :all-correct true}))
-      (let [prev-state @first
+      (let [prev-state (if first @first nil)
             result     (ask-question update first)]
         (case result
           correct (merge test-state {:ask rest
