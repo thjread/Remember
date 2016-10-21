@@ -132,15 +132,16 @@
       (ask-next true (merge test-state {:ask correct
                                         :correct []
                                         :all-correct true}))
-      (let [result (ask-question update first)]
+      (let [prev-state @first
+            result     (ask-question update first)]
         (case result
           correct (merge test-state {:ask rest
                                      :correct (conj correct [first false])
                                      :prev first
-                                     :prev-state @first})
+                                     :prev-state prev-state})
           incorrect (merge test-state {:ask (conj rest [first false])
                                        :prev first
-                                       :prev-state @first
+                                       :prev-state prev-state
                                        :all-correct false})
           result)))))
 
@@ -161,11 +162,13 @@
             (recur result test-state)))))))
 
 (defn list-memories []
-  (map println
-       ["Memories:"
-        ""
-        (map (fn [memory] (str (:question memory) " -> " (:answer memory)))
-             @memories)]))
+  (if (not (seq @memories))
+    (println "No memories.")
+    (doseq [s (concat ["Memories:"
+                       ""]
+                      (map (fn [memory] (str (:question @memory) " -> " (:answer @memory)))
+                           @memories))]
+      (println s))))
 
 (def cli-options [["-h" "--help" "Print this help"
                    :default false]
@@ -185,11 +188,12 @@
         options-summary
         ""
         "Actions:"
-        "  add QUESTION ANSWER     Add a new memory"
+        "  QUESTION ANSWER     Add a new memory"
         "  delete QUESTION         Delete a memory"
         "  list                    List memories"
         ""
-        "If no action is given the program will test difficult memories."]
+        "If no action is given the program will test difficult memories."
+        "Type quit to exit, and undo to undo the previous answer"]
        (clojure.string/join \newline)))
 
 (defn -main [& args]
