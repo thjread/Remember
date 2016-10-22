@@ -4,7 +4,8 @@
   (:require [clj-time.coerce :as c])
   (:require [clojure.math.numeric-tower :as math])
   (:require [clojure.edn :as edn])
-  (:require [clojure.tools.cli :as cli]))
+  (:require [clojure.tools.cli :as cli])
+  (:require [clojure.java.io :as io]))
 
 (defrecord Memory
     [question answer type-in lastdate timer karma])
@@ -63,9 +64,15 @@
   (let [days (t/in-days (t/interval (:lastdate @memory) (t/now)))]
     (>= days (:timer @memory))))
 
+(defn quit [code]
+  (System/exit code))
+
 (def default-file (str (System/getenv "HOME") "/.remember"))
 
 (defn load-memories [file]
+  (when (not (.exists file))
+    (println "File not found.")
+    (quit 1))
   (reset! memories (map read-to-memory (edn/read-string (slurp file)))))
 
 (defn save-memories [file]
@@ -170,6 +177,10 @@
                            @memories))]
       (println s))))
 
+(defn path-exists? [file]
+  (let [parent (.getParent file)]
+    (or (nil? parent) (.isDirectory (io/file parent)))))
+
 (def cli-options [["-h" "--help" "Print this help"
                    :default false]
                   ["-c" "--all-correct" "Repeat questions until all answered correctly in a row"
@@ -179,7 +190,9 @@
                   ["-s" "--show" "Show answer rather than type in"
                    :default false]
                   ["-f" "--file FILE" "Specify save file"
-                   :default default-file]]) ;; TODO: add validate
+                   :default (io/file default-file)
+                   :validate [path-exists?]
+                   :parse-fn io/file]])
 
 (defn usage [options-summary]
   (->> ["Usage: remember [options] [action]"
@@ -197,15 +210,20 @@
        (clojure.string/join \newline)))
 
 (defn -main [& args]
-  (let [{:keys [options arguments summary]} (cli/parse-opts args cli-options)]
-    (if (:help options)
-      (println (usage summary))
-      (do (load-memories (:file options))
-          (case (first arguments)
-            nil      (do-test (:all-correct options) (:all options))
-            "delete" (delete-memory (second arguments)) ;; TODO: say when not found
-            "list"   (list-memories)
-            (add-memory (make-memory (first arguments) (second arguments)
-                                     (not (:show options)))))
-          (save-memories (:file options))))))
+  (let [{:keys [options arguments summary errors]} (cli/parse-opts args cli-options)]
+    (cond (:help options) (println (usage summary))
+          errors (println (clojure.string/join \newline errors))
+          :else
+          (do (case (first arguments)
+                nil      (do (load-memories (:file options))
+                             (do-test (:all-correct options) (:all options)))
+                "delete" (do (load-memories (:file options))
+                             (delete-memory (second arguments)))
+                "list"   (do (load-memories (:file options))
+                             (list-memories))
+                (add-memory (do (when (.exists (:file options))
+                                  (load-memories (:file options)))
+                                (make-memory (first arguments) (second arguments)
+                                             (not (:show options))))))
+              (save-memories (:file options))))))
 
