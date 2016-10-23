@@ -41,7 +41,9 @@
   (swap! memories (partial remove #(= question (:question (deref %))))))
 
 (defn karma-time [karma]
-  (math/expt 2 (dec karma)))
+  (let [time      (* 24 (math/expt 2 (dec karma)))
+        variation (/ time 8)]
+    (/ (+ time (- (rand-int (* 2 variation)) variation)) 24)))
 
 (defn correct-answer [memory]
   (letfn [(correct [mem]
