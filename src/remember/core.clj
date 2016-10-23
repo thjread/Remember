@@ -61,7 +61,7 @@
     (swap! memory incorrect)))
 
 (defn needs-test? [memory]
-  (let [days (t/in-days (t/interval (:lastdate @memory) (t/now)))]
+  (let [days (/ (t/in-hours (t/interval (:lastdate @memory) (t/now))) 24)]
     (>= days (:timer @memory))))
 
 (defn quit [code]
@@ -214,16 +214,17 @@
     (cond (:help options) (println (usage summary))
           errors (println (clojure.string/join \newline errors))
           :else
-          (do (case (first arguments)
-                nil      (do (load-memories (:file options))
-                             (do-test (:all-correct options) (:all options)))
-                "delete" (do (load-memories (:file options))
-                             (delete-memory (second arguments)))
-                "list"   (do (load-memories (:file options))
-                             (list-memories))
-                (add-memory (do (when (.exists (:file options))
-                                  (load-memories (:file options)))
-                                (make-memory (first arguments) (second arguments)
-                                             (not (:show options))))))
-              (save-memories (:file options))))))
+          (let [file (:file options)]
+            (case (first arguments)
+              nil      (do (load-memories file)
+                           (do-test (:all-correct options) (:all options)))
+              "delete" (do (load-memories file)
+                           (delete-memory (second arguments)))
+              "list"   (do (load-memories file)
+                           (list-memories))
+              (add-memory (do (when (.exists file)
+                                (load-memories file))
+                              (make-memory (first arguments) (second arguments)
+                                           (not (:show options))))))
+            (save-memories file)))))
 
