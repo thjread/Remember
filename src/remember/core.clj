@@ -42,7 +42,7 @@
 
 (defn karma-time [karma]
   (let [time      (* 24 (math/expt 2 (dec karma)))
-        variation (/ time 8)]
+        variation (/ time 4)]
     (/ (+ time (- (rand-int (* 2 variation)) variation)) 24)))
 
 (defn correct-answer [memory]
@@ -62,8 +62,11 @@
            (assoc mem :karma karma)))]
     (swap! memory incorrect)))
 
+(defn days-since-test [memory]
+  (/ (t/in-hours (t/interval (:lastdate @memory) (t/now))) 24))
+
 (defn needs-test? [memory]
-  (let [days (/ (t/in-hours (t/interval (:lastdate @memory) (t/now))) 24)]
+  (let [days (days-since-test memory)]
     (>= days (:timer @memory))))
 
 (defn quit [code]
@@ -170,12 +173,23 @@
             quit nil
             (recur result test-state)))))))
 
+(defn print-memory [mem]
+  (letfn [(format-time [t]
+            (if (<= t 0) "now"
+                (str "in " (if (< t 2)
+                              (str (math/floor (* t 24)) " hours")
+                              (str (math/floor t) " days")))))]
+    (str (:question @mem) " -> " (:answer @mem)
+         " (next test " (let [time (- (:timer @mem) (days-since-test mem))]
+                         (format-time time))
+         ")")))
+
 (defn list-memories []
   (if (not (seq @memories))
     (println "No memories.")
     (doseq [s (concat ["Memories:"
                        ""]
-                      (map (fn [memory] (str (:question @memory) " -> " (:answer @memory)))
+                      (map print-memory
                            @memories))]
       (println s))))
 
