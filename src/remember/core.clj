@@ -65,9 +65,11 @@
 (defn days-since-test [memory]
   (/ (t/in-hours (t/interval (:lastdate @memory) (t/now))) 24))
 
+(defn time-till-test [memory]
+  (- (:timer @memory) (days-since-test memory)))
+
 (defn needs-test? [memory]
-  (let [days (days-since-test memory)]
-    (>= days (:timer @memory))))
+  (<= (time-till-test memory) 0))
 
 (defn quit [code]
   (System/exit code))
@@ -190,7 +192,7 @@
     (doseq [s (concat ["Memories:"
                        ""]
                       (map print-memory
-                           @memories))]
+                           (sort-by time-till-test @memories)))]
       (println s))))
 
 (defn path-exists? [file]
