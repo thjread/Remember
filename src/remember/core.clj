@@ -179,8 +179,8 @@
   (letfn [(format-time [t]
             (if (<= t 0) "now"
                 (str "in " (if (< t 2)
-                              (str (math/floor (* t 24)) " hours")
-                              (str (math/floor t) " days")))))]
+                             (let [hours (math/floor (* t 24))] (str hours (if (= hours 1) " hour" " hours")))
+                             (str (math/floor t) " days")))))]
     (str (:question @mem) " -> " (:answer @mem)
          " (next test " (let [time (- (:timer @mem) (days-since-test mem))]
                          (format-time time))
